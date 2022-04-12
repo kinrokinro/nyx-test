@@ -394,6 +394,8 @@ func NewWasmApp(
 		homePath,
 		app.BaseApp,
 	)
+        cfg := module.NewConfigurator(appCodec, app.MsgServiceRouter(), app.GRPCQueryRouter())
+	app.RegisterUpgradeHandlers(cfg)
 
 	// register the staking hooks
 	// NOTE: stakingKeeper above is passed by reference, so that it will contain these hooks
@@ -791,6 +793,12 @@ func RegisterSwaggerAPI(rtr *mux.Router) {
 
 	staticServer := http.FileServer(statikFS)
 	rtr.PathPrefix("/swagger/").Handler(http.StripPrefix("/swagger/", staticServer))
+}
+
+func (app *WasmApp) RegisterUpgradeHandlers(cfg module.Configurator) {
+	app.upgradeKeeper.SetUpgradeHandler("Upgrade to wasmd v0.24.0", func(ctx sdk.Context, plan upgradetypes.Plan, vm module.VersionMap) (module.VersionMap, error) {
+		return app.mm.RunMigrations(ctx, cfg, vm)
+	})
 }
 
 // GetMaccPerms returns a copy of the module account permissions
